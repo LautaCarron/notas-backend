@@ -19,7 +19,7 @@ export class CreateNotaDto {
   @MaxLength(80)
   titulo: string;
 
-  @ApiProperty({ example: 'Pasar por la panadería antes de las 18' })
+  @ApiProperty({ example: 'Descansar 18 minutos' })
   @Transform(({ value }: { value: string }) =>
     typeof value === 'string' ? value.trim() : value,
   )
@@ -29,11 +29,11 @@ export class CreateNotaDto {
   texto: string;
 
   @ApiProperty({ example: '#ff5722', description: 'Color hexadecimal' })
-  @IsHexColor({ message: 'El color debe ser hexadecimal, por ejemplo #ff5722' })
+  @IsHexColor({ message: 'El color debe ser hexadecimal' })
   color: string;
 
   @ApiProperty({ example: 15, minimum: 0, description: 'Minutos' })
-  @IsInt({ message: 'Los minutos deben ser un número entero' })
-  @Min(0, { message: 'Los minutos no pueden ser negativos' })
+  @IsInt({ message: 'Error de sintaxis' })
+  @Min(0, { message: 'Error de sintaxis' })
   min: number;
 }

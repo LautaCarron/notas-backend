@@ -18,7 +18,7 @@ async function bootstrap() {
     app,
     new DocumentBuilder()
       .setTitle('API de notas')
-      .setDescription('Notas adhesivas')
+      .setDescription('Notas')
       .setVersion('1.0')
       .build(),
   );

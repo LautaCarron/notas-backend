@@ -11,12 +11,14 @@ describe('NotasService', () => {
   let service: NotasService;
   const previousDataFile = process.env.DATA_FILE;
 
+  
   const notaEjemplo = {
     titulo: 'Comprar pan',
     texto: 'Pasar por la panadería',
     color: '#ff5722',
     min: 15,
   };
+
 
   beforeEach(async () => {
     directory = await mkdtemp(join(tmpdir(), 'notas-'));
@@ -27,11 +29,13 @@ describe('NotasService', () => {
     service = module.get(NotasService);
   });
 
+
   afterEach(async () => {
     if (previousDataFile === undefined) delete process.env.DATA_FILE;
     else process.env.DATA_FILE = previousDataFile;
     await rm(directory, { recursive: true, force: true });
   });
+
 
   it('crea una nota con id generado', async () => {
     const nota = await service.create(notaEjemplo);
@@ -41,9 +45,11 @@ describe('NotasService', () => {
     await expect(service.findAll()).resolves.toEqual([nota]);
   });
 
-  it('devuelve una lista vacía si no hay notas', async () => {
+
+  it('devuelve lista vacía si no hay notas', async () => {
     await expect(service.findAll()).resolves.toEqual([]);
   });
+
 
   it('encuentra una nota por id', async () => {
     const nota = await service.create(notaEjemplo);
@@ -51,11 +57,13 @@ describe('NotasService', () => {
     await expect(service.findOne(nota.id)).resolves.toEqual(nota);
   });
 
+
   it('no encuentra una nota inexistente', async () => {
     await expect(service.findOne('uuid-inexistente')).rejects.toBeInstanceOf(
       NotFoundException,
     );
   });
+
 
   it('modifica solo los campos enviados', async () => {
     const nota = await service.create(notaEjemplo);
@@ -67,11 +75,13 @@ describe('NotasService', () => {
     await expect(service.findOne(nota.id)).resolves.toEqual(actualizada);
   });
 
+
   it('no modifica una nota inexistente', async () => {
     await expect(
       service.update('uuid-inexistente', { min: 30 }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
+
 
   it('elimina una nota', async () => {
     const nota = await service.create(notaEjemplo);
@@ -82,6 +92,7 @@ describe('NotasService', () => {
     });
     await expect(service.findAll()).resolves.toEqual([]);
   });
+
 
   it('no elimina una nota inexistente', async () => {
     await expect(service.remove('uuid-inexistente')).rejects.toBeInstanceOf(

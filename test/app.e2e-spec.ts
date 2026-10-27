@@ -51,10 +51,10 @@ describe('Notas (e2e)', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        titulo: 'Comprar pan',
-        texto: 'Pasar por la panadería',
-        color: '#ff5722',
-        min: 15,
+        titulo: 'Aprobar Materia',
+        texto: 'Que me ayude la IA',
+        color: '#22ff43',
+        min: 10,
       }),
     });
 
@@ -72,7 +72,7 @@ describe('Notas (e2e)', () => {
       body: JSON.stringify({
         titulo: '',
         texto: 'prueba',
-        color: 'rojo',
+        color: 'amarillo',
         min: -5,
       }),
     });
