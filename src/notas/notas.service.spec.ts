@@ -1,102 +1,156 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { JsonDb } from '../database/json-db';
+import { CreateNotaDto } from './dto/create-nota.dto';
+import { UpdateNotaDto } from './dto/update-nota.dto';
+import { Nota } from './entities/nota.entity';
+import { NotasRepository } from './notas.repository';
 import { NotasService } from './notas.service';
 
-describe('NotasService', () => {
-  let directory: string;
+describe('NotasService (Unit Tests)', () => {
   let service: NotasService;
-  const previousDataFile = process.env.DATA_FILE;
+  let repository: jest.Mocked<NotasRepository>;
 
-  
-  const notaEjemplo = {
+  const mockNota: Nota = {
+    id: '550e8400-e29b-41d4-a716-446655440000',
     titulo: 'Comprar pan',
     texto: 'Pasar por la panadería',
     color: '#ff5722',
     min: 15,
   };
 
+  const createDto: CreateNotaDto = {
+    titulo: 'Comprar pan',
+    texto: 'Pasar por la panadería',
+    color: '#ff5722',
+    min: 15,
+  };
 
   beforeEach(async () => {
-    directory = await mkdtemp(join(tmpdir(), 'notas-'));
-    process.env.DATA_FILE = join(directory, 'db.json');
+    const mockRepo: Partial<jest.Mocked<NotasRepository>> = {
+      findAll: jest.fn(),
+      findById: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [NotasService, JsonDb],
+      providers: [
+        NotasService,
+        {
+          provide: NotasRepository,
+          useValue: mockRepo,
+        },
+      ],
     }).compile();
-    service = module.get(NotasService);
+
+    service = module.get<NotasService>(NotasService);
+    repository = module.get(NotasRepository);
   });
 
+  describe('create', () => {
+    it('debe crear una nota asignándole un ID y persistirla a través del repositorio', async () => {
+      repository.create.mockImplementation(async (nota) => nota);
 
-  afterEach(async () => {
-    if (previousDataFile === undefined) delete process.env.DATA_FILE;
-    else process.env.DATA_FILE = previousDataFile;
-    await rm(directory, { recursive: true, force: true });
-  });
+      const resultado = await service.create(createDto);
 
-
-  it('crea una nota con id generado', async () => {
-    const nota = await service.create(notaEjemplo);
-
-    expect(nota.id).toEqual(expect.any(String));
-    expect(nota).toMatchObject(notaEjemplo);
-    await expect(service.findAll()).resolves.toEqual([nota]);
-  });
-
-
-  it('devuelve lista vacía si no hay notas', async () => {
-    await expect(service.findAll()).resolves.toEqual([]);
-  });
-
-
-  it('encuentra una nota por id', async () => {
-    const nota = await service.create(notaEjemplo);
-
-    await expect(service.findOne(nota.id)).resolves.toEqual(nota);
-  });
-
-
-  it('no encuentra una nota inexistente', async () => {
-    await expect(service.findOne('uuid-inexistente')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
-  });
-
-
-  it('modifica solo los campos enviados', async () => {
-    const nota = await service.create(notaEjemplo);
-
-    const actualizada = await service.update(nota.id, { min: 30 });
-
-    expect(actualizada.min).toBe(30);
-    expect(actualizada.titulo).toBe(notaEjemplo.titulo);
-    await expect(service.findOne(nota.id)).resolves.toEqual(actualizada);
-  });
-
-
-  it('no modifica una nota inexistente', async () => {
-    await expect(
-      service.update('uuid-inexistente', { min: 30 }),
-    ).rejects.toBeInstanceOf(NotFoundException);
-  });
-
-
-  it('elimina una nota', async () => {
-    const nota = await service.create(notaEjemplo);
-
-    await expect(service.remove(nota.id)).resolves.toEqual({
-      mensaje: 'Nota eliminada',
-      id: nota.id,
+      expect(resultado).toBeDefined();
+      expect(resultado.id).toBeDefined();
+      expect(resultado.titulo).toBe(createDto.titulo);
+      expect(resultado.texto).toBe(createDto.texto);
+      expect(resultado.color).toBe(createDto.color);
+      expect(resultado.min).toBe(createDto.min);
+      expect(repository.create).toHaveBeenCalledTimes(1);
     });
-    await expect(service.findAll()).resolves.toEqual([]);
   });
 
+  describe('findAll', () => {
+    it('debe retornar todas las notas provistas por el repositorio', async () => {
+      repository.findAll.mockResolvedValue([mockNota]);
 
-  it('no elimina una nota inexistente', async () => {
-    await expect(service.remove('uuid-inexistente')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+      const resultado = await service.findAll();
+
+      expect(resultado).toEqual([mockNota]);
+      expect(repository.findAll).toHaveBeenCalledTimes(1);
+    });
+
+    it('debe retornar una lista vacía si no hay notas', async () => {
+      repository.findAll.mockResolvedValue([]);
+
+      const resultado = await service.findAll();
+
+      expect(resultado).toEqual([]);
+      expect(repository.findAll).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('findOne', () => {
+    it('debe retornar la nota si existe', async () => {
+      repository.findById.mockResolvedValue(mockNota);
+
+      const resultado = await service.findOne(mockNota.id);
+
+      expect(resultado).toEqual(mockNota);
+      expect(repository.findById).toHaveBeenCalledWith(mockNota.id);
+    });
+
+    it('debe lanzar NotFoundException si la nota no existe', async () => {
+      repository.findById.mockResolvedValue(null);
+
+      await expect(service.findOne('id-inexistente')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(repository.findById).toHaveBeenCalledWith('id-inexistente');
+    });
+  });
+
+  describe('update', () => {
+    it('debe actualizar los campos de la nota si existe', async () => {
+      const updateDto: UpdateNotaDto = { min: 30 };
+      const notaActualizada: Nota = Object.assign(new Nota(), mockNota, {
+        min: 30,
+      });
+
+      repository.findById.mockResolvedValue(mockNota);
+      repository.update.mockResolvedValue(notaActualizada);
+
+      const resultado = await service.update(mockNota.id, updateDto);
+
+      expect(resultado).toEqual(notaActualizada);
+      expect(repository.findById).toHaveBeenCalledWith(mockNota.id);
+      expect(repository.update).toHaveBeenCalledWith(mockNota.id, updateDto);
+    });
+
+    it('debe lanzar NotFoundException si se intenta actualizar una nota inexistente', async () => {
+      repository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.update('id-inexistente', { min: 30 }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('remove', () => {
+    it('debe eliminar la nota y retornar mensaje de confirmación si existe', async () => {
+      repository.findById.mockResolvedValue(mockNota);
+      repository.delete.mockResolvedValue(true);
+
+      const resultado = await service.remove(mockNota.id);
+
+      expect(resultado).toEqual({
+        mensaje: 'Nota eliminada',
+        id: mockNota.id,
+      });
+      expect(repository.findById).toHaveBeenCalledWith(mockNota.id);
+      expect(repository.delete).toHaveBeenCalledWith(mockNota.id);
+    });
+
+    it('debe lanzar NotFoundException si se intenta eliminar una nota inexistente', async () => {
+      repository.findById.mockResolvedValue(null);
+
+      await expect(service.remove('id-inexistente')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
   });
 });

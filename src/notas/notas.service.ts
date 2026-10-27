@@ -1,59 +1,49 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { JsonDb } from '../database/json-db';
 import { CreateNotaDto } from './dto/create-nota.dto';
 import { UpdateNotaDto } from './dto/update-nota.dto';
 import { Nota } from './entities/nota.entity';
+import { NotasRepository } from './notas.repository';
 
 @Injectable()
 export class NotasService {
-  constructor(private readonly db: JsonDb) {}
+  constructor(private readonly repo: NotasRepository) {}
 
-  create(dto: CreateNotaDto): Promise<Nota> {
-    return this.db.update((data) => {
-      const nota: Nota = {
-        id: randomUUID(),
-        titulo: dto.titulo,
-        texto: dto.texto,
-        color: dto.color,
-        min: dto.min,
-      };
-      data.notas.push(nota);
-      return nota;
-    });
+  async create(dto: CreateNotaDto): Promise<Nota> {
+    const nota: Nota = {
+      id: randomUUID(),
+      titulo: dto.titulo,
+      texto: dto.texto,
+      color: dto.color,
+      min: dto.min,
+    };
+    return this.repo.create(nota);
   }
 
   async findAll(): Promise<Nota[]> {
-    const data = await this.db.read();
-    return [...data.notas];
+    return this.repo.findAll();
   }
 
   async findOne(id: string): Promise<Nota> {
-    const data = await this.db.read();
-    const nota = data.notas.find((item) => item.id === id);
-    if (!nota) throw new NotFoundException('Nota no encontrada');
+    const nota = await this.repo.findById(id);
+    if (!nota) {
+      throw new NotFoundException(`Nota con id ${id} no encontrada`);
+    }
     return nota;
   }
 
-  update(id: string, dto: UpdateNotaDto): Promise<Nota> {
-    return this.db.update((data) => {
-      const nota = data.notas.find((item) => item.id === id);
-      if (!nota) throw new NotFoundException('Nota no encontrada');
-
-      if (dto.titulo !== undefined) nota.titulo = dto.titulo;
-      if (dto.texto !== undefined) nota.texto = dto.texto;
-      if (dto.color !== undefined) nota.color = dto.color;
-      if (dto.min !== undefined) nota.min = dto.min;
-      return nota;
-    });
+  async update(id: string, dto: UpdateNotaDto): Promise<Nota> {
+    await this.findOne(id);
+    const updated = await this.repo.update(id, dto);
+    if (!updated) {
+      throw new NotFoundException(`Nota con id ${id} no encontrada`);
+    }
+    return updated;
   }
 
-  remove(id: string): Promise<{ mensaje: string; id: string }> {
-    return this.db.update((data) => {
-      const index = data.notas.findIndex((item) => item.id === id);
-      if (index === -1) throw new NotFoundException('Nota no encontrada');
-      data.notas.splice(index, 1);
-      return { mensaje: 'Nota eliminada', id };
-    });
+  async remove(id: string): Promise<{ mensaje: string; id: string }> {
+    await this.findOne(id);
+    await this.repo.delete(id);
+    return { mensaje: 'Nota eliminada', id };
   }
 }

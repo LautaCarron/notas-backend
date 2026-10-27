@@ -5,6 +5,8 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  app.enableCors();
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
     new ValidationPipe({
@@ -14,16 +16,17 @@ async function bootstrap() {
     }),
   );
 
-  const document = SwaggerModule.createDocument(
-    app,
-    new DocumentBuilder()
-      .setTitle('API de notas')
-      .setDescription('Notas')
-      .setVersion('1.0')
-      .build(),
-  );
+  const config = new DocumentBuilder()
+    .setTitle('API de Notas Adhesivas')
+    .setDescription('Backend para gestión de notas adhesivas desarrollado con NestJS')
+    .setVersion('1.0')
+    .addTag('notas')
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
-  await app.listen(process.env.PORT ?? 3001);
+  const port = process.env.PORT ?? 3001;
+  await app.listen(port);
 }
 void bootstrap();
